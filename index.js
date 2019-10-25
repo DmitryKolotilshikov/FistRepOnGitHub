@@ -1,14 +1,24 @@
-const express = require('express')
+const express = require('express');
+const bodyParser = require('body-parser');
 const WebSocket = require('ws');
+const MongoClient = require('mongodb').MongoClient;
+const ObjectID = require('mongodb').ObjectID;
+
 
 const port = process.env.PORT || 3000;
 
+var db;
 const app = express();
-const server = app.listen(port, () => {
-    console.log('Server started on port: ', port)
-}) //важно назвать переменную server
+
+const server = app
+    .use(bodyParser.json())
+    .use(bodyParser.urlencoded({ extended: true }))
+    .listen(port, () => {
+        console.log('Server started on port: ', port)
+    }) //важно назвать переменную server
 
 const wss = new WebSocket.Server({ server });
+
 
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
@@ -21,7 +31,37 @@ wss.on('connection', (ws) => {
     ws.send('Welcome to Chat!');
 })
 
+MongoClient.connect('mongodb+srv://chat:43214321@chatdb-mqh1r.mongodb.net/test?retryWrites=true&w=majority', (err, database) => {
+    if (err) {
+        return console.log(err);
+    }
+    db = database.db('angrychatdb');
+    // db.collection('users').insertOne({ name: 'Test' });
+})
 
+
+
+//----------------API----------------------//
+
+app.get('/', (_, res) => {
+    res.send('WELCOME TO CHAT API');
+});
+
+app.post('/users', (req, res) => {
+    const user = req.body;
+    db.collection('users').findOne({ name: user.name }, (err, result) => {
+        if (err) {
+
+            return res.sendStatus(500);
+        }
+        if (result) {
+            db.collection('users').insertOne(user);
+            res.sendStatus(200);
+        } else {
+            res.sendStatus(501);
+        }
+    })
+});
 
 
 
