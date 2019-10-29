@@ -11,6 +11,12 @@ var db;
 const app = express();
 
 const server = app
+    .use(function (req, res, next) {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE");
+        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+        next();
+    })
     .use(bodyParser.json())
     .use(bodyParser.urlencoded({ extended: true }))
     .listen(port, () => {
@@ -51,19 +57,59 @@ app.post('/users', (req, res) => {
     const user = req.body;
     db.collection('users').findOne({ name: user.name }, (err, result) => {
         if (err) {
-
             return res.sendStatus(500);
         }
-        if (result) {
-            db.collection('users').insertOne(user);
-            res.sendStatus(200);
+        if (!result) {
+            db.collection('users').insertOne(user, (err) => {
+                db.collection('users').findOne({ name: user.name }, (err, data) => {
+                    res.send(data._id);
+                })
+            });
         } else {
             res.sendStatus(501);
         }
     })
 });
 
+app.get('/users', (req, res) => {
+    db.collection('users').find().toArray((err, data) => {
+        const users = data.map(user => {
+            return {
+                name: user.name,
+                avatar: user.avatar ? user.avatar : null
+            }
+        });
+        res.send(JSON.stringify(users));
+    })
+});
 
+
+app.post('/auth', (req, res) => {
+    const user = req.body;
+    db.collection('users').findOne({ name: user.name, password: user.password }, (err, data) => {
+        if (err) {
+            return res.sendStatus(500);
+        }
+
+        if (data) {
+            res.send(data._id)
+        } else {
+            res.sendStatus(401);
+        }
+
+    })
+});
+
+app.post('/user', (req, res) => {
+    const user = req.body;
+    db.collection('users').updateOne({ _id: ObjectID(user.id) },
+        { name: user.name, password: user.password, avatar: user.avatar }, (err) => {
+            if (err) {
+                return res.sendStatus(500);
+            }
+            res.sendStatus(200)
+        })
+})
 
 
 
