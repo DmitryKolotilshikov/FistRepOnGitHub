@@ -28,13 +28,13 @@ const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
+        saveMessage(message);
         wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(message);
             }
         });
     });
-    ws.send('Welcome to Chat!');
 })
 
 MongoClient.connect('mongodb+srv://chat:43214321@chatdb-mqh1r.mongodb.net/test?retryWrites=true&w=majority', (err, database) => {
@@ -102,15 +102,45 @@ app.post('/auth', (req, res) => {
 
 app.post('/user', (req, res) => {
     const user = req.body;
-    db.collection('users').updateOne({ _id: ObjectID(user.id) },
-        { name: user.name, password: user.password, avatar: user.avatar }, (err) => {
+    const userId = req.query.userid;
+    db.collection('users').updateOne({ _id: ObjectID(userId) },
+        { $set: { name: user.name, password: user.password, avatar: user.avatar } }, (err) => {
             if (err) {
                 return res.sendStatus(500);
             }
-            res.sendStatus(200)
+            res.send(JSON.stringify(user));
         })
 })
 
+app.get('/user', (req, res) => {
+    const userId = req.query.userid;
+    db.collection('users').findOne({ _id: ObjectID(userId) }, (err, user) => {
+        if (err) {
+            return res.sendStatus(500)
+        }
+        if (user) {
+            res.send(JSON.stringify(user));
+        } else {
+            res.sendStatus(404)
+        }
+    })
+})
+
+app.get('/messages', (req, res) => {
+    db.collection('messages').find().toArray((err, data) => {
+        if (err) {
+            return res.sendStatus(500)
+        }
+        res.send(JSON.stringify(data))
+    })
+})
+
+function saveMessage(message) {
+    if (message) {
+        const mes = JSON.parse(message)
+        db.collection('messages').insertOne(mes);
+    }
+}
 
 
 
