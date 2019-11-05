@@ -127,11 +127,14 @@ app.get('/user', (req, res) => {
 })
 
 app.get('/messages', (req, res) => {
+    const from = req.query.from;
+    const to = req.query.to;
     db.collection('messages').find().toArray((err, data) => {
         if (err) {
             return res.sendStatus(500)
         }
-        res.send(JSON.stringify(data))
+        const messages = data.reverse().slice(from, to)
+        res.send(JSON.stringify(messages))
     })
 })
 
